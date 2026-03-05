@@ -1,0 +1,18 @@
+# Redactomatic control file – one PII term per line
+# Lines starting with # are ignored
+
+# --- Names ---
+John Smith
+Jane Doe
+
+# --- Account / ID numbers ---
+123-45-6789
+4111 1111 1111 1111
+
+# --- Contact info ---
+jane.doe@example.com
+555-867-5309
+
+# --- Addresses ---
+123 Main Street
+Anytown, CA 90210

@@ -1,0 +1,17 @@
+services:
+  redactomatic:
+    build: .
+    container_name: redactomatic
+    restart: unless-stopped
+    ports:
+      - "8080:5000"          # Access at http://<NAS-IP>:8080
+    volumes:
+      - redact-data:/data    # Persists uploaded and redacted files
+    environment:
+      - UPLOAD_FOLDER=/data
+      - MAX_CONTENT_MB=100
+      # Optional: set a stable secret key to avoid session invalidation on restart
+      # - SECRET_KEY=change-me-to-something-random
+
+volumes:
+  redact-data:
