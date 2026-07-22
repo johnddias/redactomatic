@@ -7,7 +7,18 @@ Output is written to a new file with a .red.pdf extension.
 """
 
 import pathlib
+import re
 import fitz  # PyMuPDF
+import pdfplumber
+
+from document_extractors import UNKNOWN, extract, write_holdings_markdown
+
+# Matches standard SSN format: 123-45-6789
+_SSN_RE = re.compile(r"^(\d{3})-(\d{2})-(\d{4})$")
+
+# Matches "(Acct # 6038)" / "(Acct # 6038" style account references, three
+# separate pdfplumber words: '(Acct', '#', '6038)'.
+_ACCT_NUM_RE = re.compile(r"^\d+\)?$")
 
 
 # ---------------------------------------------------------------------------
@@ -39,6 +50,50 @@ def load_pii_terms(control_path: str) -> list[str]:
 # Core redaction
 # ---------------------------------------------------------------------------
 
+def _same_row(r1: fitz.Rect, r2: fitz.Rect) -> bool:
+    """True when two rects share roughly the same horizontal band."""
+    h = min(r1.height, r2.height)
+    return abs((r1.y0 + r1.y1) / 2 - (r2.y0 + r2.y1) / 2) <= h * 0.75
+
+
+def _find_ssn_rects(page: fitz.Page, ssn: str) -> list[fitz.Rect]:
+    """Return bounding rects covering each occurrence of *ssn*.
+
+    Handles both continuous text ("123-45-6789") and tax-form discrete boxes
+    where each SSN segment lives in its own text element.  Only groups of all
+    three parts that appear left-to-right on the same row within a reasonable
+    horizontal gap are considered matches, preventing the individual digit
+    strings from triggering false positives elsewhere on the page.
+    """
+    m = _SSN_RE.match(ssn)
+    if not m:
+        return []
+
+    part_rects = [page.search_for(m.group(i), quads=False) for i in (1, 2, 3)]
+    if not all(part_rects):
+        return []
+
+    results: list[fitz.Rect] = []
+    for r1 in part_rects[0]:
+        for r2 in part_rects[1]:
+            if r2.x0 <= r1.x1 or not _same_row(r1, r2):
+                continue
+            max_gap = max(r1.height, r2.height) * 5
+            if r2.x0 - r1.x1 > max_gap:
+                continue
+            for r3 in part_rects[2]:
+                if r3.x0 <= r2.x1 or not _same_row(r1, r3):
+                    continue
+                if r3.x0 - r2.x1 > max_gap:
+                    continue
+                # One bounding rect covers all three parts and any gaps between them.
+                results.append(fitz.Rect(
+                    r1.x0, min(r1.y0, r2.y0, r3.y0),
+                    r3.x1, max(r1.y1, r2.y1, r3.y1),
+                ))
+    return results
+
+
 def _case_variants(term: str) -> list[str]:
     """Return a small set of case variants so matching is case-insensitive."""
     variants: list[str] = []
@@ -55,18 +110,60 @@ def _redact_page(page: fitz.Page, terms: list[str]) -> int:
     """
     added = 0
     for term in terms:
-        for variant in _case_variants(term):
-            hits = page.search_for(variant, quads=False)
-            for rect in hits:
+        if _SSN_RE.match(term):
+            for rect in _find_ssn_rects(page, term):
                 page.add_redact_annot(rect, fill=(0, 0, 0))
                 added += 1
+        else:
+            for variant in _case_variants(term):
+                for rect in page.search_for(variant, quads=False):
+                    page.add_redact_annot(rect, fill=(0, 0, 0))
+                    added += 1
+    return added
+
+
+def _redact_account_numbers(page: fitz.Page, plumber_page) -> int:
+    """Redact just the digits of "(Acct # NNNN)" references, row-scoped.
+
+    These statements repeat "JPMS LLC IRA (Acct # 6038) ... Statement
+    Period: ..." on one line per page. Redacting the whole line (or a
+    naive full-page text search for the bare account number) risks
+    bleeding into unrelated data sharing that row -- e.g. a market value
+    that happens to equal the account number, or the adjacent statement
+    period text. pdfplumber's word grouping tells us *which* occurrence
+    of the number is the account reference; we then look up that word's
+    actual glyph rect via PyMuPDF's own search rather than trusting
+    pdfplumber's reported bounding box, since some source PDFs (e.g. ones
+    that already went through a prior redact/re-save cycle) carry
+    degenerate per-glyph height metrics that make pdfplumber's box far
+    too short to blank the text.
+    """
+    words = plumber_page.extract_words(use_text_flow=False, keep_blank_chars=False)
+    added = 0
+    for i in range(len(words) - 2):
+        w1, w2, w3 = words[i], words[i + 1], words[i + 2]
+        if w1["text"] == "(Acct" and w2["text"] == "#" and _ACCT_NUM_RE.match(w3["text"]):
+            for rect in page.search_for(w3["text"]):
+                if abs(rect.x0 - w3["x0"]) < 2:
+                    page.add_redact_annot(rect, fill=(0, 0, 0))
+                    added += 1
+                    break
     return added
 
 
 def redact_pdf(input_path: str, control_path: str) -> str:
     """Redact *input_path* using PII terms from *control_path*.
 
-    Returns the path of the newly created redacted file (*.red.pdf*).
+    Alongside the existing term-based redaction, runs a pdfplumber-based
+    pass that redacts account-number references at row/column scope, and,
+    for recognized statement vendors, extracts every holdings-table row
+    into a clean per-holding markdown sidecar file (``<name>.tables.md``)
+    with correctly separated quantity/price/market-value columns despite
+    the footnote-column bleed in the source layout. Unrecognized document
+    types fall back to redaction-only -- no table extraction is attempted
+    and ``tables_path`` is None.
+
+    Returns ``(out_path, total_redactions, tables_path)``.
     Raises ValueError when the control file contains no usable terms.
     """
     terms = load_pii_terms(control_path)
@@ -79,14 +176,19 @@ def redact_pdf(input_path: str, control_path: str) -> str:
     if src.stem.endswith(".red"):
         out_path = src.with_name(src.stem + ".pdf").with_suffix(".red.pdf")
 
+    doc_type, holdings = extract(input_path)
+    tables_path = write_holdings_markdown(str(out_path), holdings) if doc_type != UNKNOWN else None
+
     doc: fitz.Document = fitz.open(input_path)
 
     total_redactions = 0
-    for page in doc:
-        n = _redact_page(page, terms)
-        if n:
-            page.apply_redactions(images=fitz.PDF_REDACT_IMAGE_PIXELS)
-        total_redactions += n
+    with pdfplumber.open(input_path) as plumber_doc:
+        for page, plumber_page in zip(doc, plumber_doc.pages):
+            n = _redact_page(page, terms)
+            n += _redact_account_numbers(page, plumber_page)
+            if n:
+                page.apply_redactions(images=fitz.PDF_REDACT_IMAGE_PIXELS)
+            total_redactions += n
 
     # Strip all metadata
     doc.set_metadata({})
@@ -97,4 +199,4 @@ def redact_pdf(input_path: str, control_path: str) -> str:
     doc.save(str(out_path), garbage=4, deflate=True, clean=True)
     doc.close()
 
-    return str(out_path), total_redactions
+    return str(out_path), total_redactions, tables_path

@@ -260,6 +260,13 @@
 
     .btn-download:hover { filter: brightness(1.1); }
 
+    .btn-download-secondary {
+      background: var(--surface);
+      color: var(--text);
+      border: 1px solid var(--border);
+      margin-top: 0.75rem;
+    }
+
     .btn-reset {
       display: block;
       width: 100%;
@@ -358,6 +365,7 @@
     <span class="badge badge-info" id="badge-filename"></span>
   </div>
   <a class="btn-download" id="download-link" href="#" download>Download redacted PDF</a>
+  <a class="btn-download btn-download-secondary" id="tables-download-link" href="#" download style="display:none">Download holdings tables (.md)</a>
   <button class="btn-reset" onclick="resetForm()">Redact another document</button>
 </div>
 
@@ -470,6 +478,15 @@
       const link = document.getElementById('download-link');
       link.href = '/download/' + data.download_token;
       link.download = data.output_file;
+
+      const tablesLink = document.getElementById('tables-download-link');
+      if (data.tables_download_token) {
+        tablesLink.href = '/download/' + data.tables_download_token;
+        tablesLink.download = data.tables_file;
+        tablesLink.style.display = 'block';
+      } else {
+        tablesLink.style.display = 'none';
+      }
 
       document.getElementById('badge-redactions').textContent =
         data.redactions + (data.redactions === 1 ? ' redaction' : ' redactions') + ' applied';
