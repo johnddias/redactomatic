@@ -83,7 +83,7 @@ def redact():
     ctrl_file.save(str(ctrl_path))
 
     try:
-        out_path, count = redact_pdf(str(pdf_path), str(ctrl_path))
+        out_path, count, tables_path = redact_pdf(str(pdf_path), str(ctrl_path))
     except ValueError as exc:
         return jsonify({"error": str(exc)}), 422
     except Exception as exc:  # noqa: BLE001
@@ -92,14 +92,17 @@ def redact():
 
     out_rel = str(pathlib.Path(out_path).relative_to(UPLOAD_FOLDER))
 
-    return jsonify(
-        {
-            "success": True,
-            "redactions": count,
-            "output_file": pathlib.Path(out_path).name,
-            "download_token": out_rel,
-        }
-    )
+    response = {
+        "success": True,
+        "redactions": count,
+        "output_file": pathlib.Path(out_path).name,
+        "download_token": out_rel,
+    }
+    if tables_path is not None:
+        response["tables_file"] = pathlib.Path(tables_path).name
+        response["tables_download_token"] = str(pathlib.Path(tables_path).relative_to(UPLOAD_FOLDER))
+
+    return jsonify(response)
 
 
 @app.route("/download/<path:token>")
@@ -111,11 +114,12 @@ def download(token: str):
     if not safe.exists():
         return "Not found", 404
 
+    mimetype = "text/markdown" if safe.suffix == ".md" else "application/pdf"
     return send_file(
         safe,
         as_attachment=True,
         download_name=safe.name,
-        mimetype="application/pdf",
+        mimetype=mimetype,
     )
 
 
