@@ -6,6 +6,7 @@ from dataclasses import dataclass, field
 
 @dataclass
 class Holding:
+    account: str
     page: int
     description: str
     quantity: str
@@ -19,12 +20,12 @@ class Holding:
 
 def holdings_to_markdown(holdings: list[Holding]) -> str:
     lines = [
-        "| Page | Description | Quantity | Price | Market Value | Unit Cost | Cost Basis | Gain/Loss |",
-        "|---|---|---|---|---|---|---|---|",
+        "| Account | Page | Description | Quantity | Price | Market Value | Unit Cost | Cost Basis | Gain/Loss |",
+        "|---|---|---|---|---|---|---|---|---|",
     ]
     for h in holdings:
         lines.append(
-            f"| {h.page} | {h.description} | {h.quantity} | {h.price} | "
+            f"| {h.account} | {h.page} | {h.description} | {h.quantity} | {h.price} | "
             f"{h.market_value} | {h.unit_cost} | {h.cost_basis} | {h.gain_loss} |"
         )
     return "\n".join(lines) + "\n"

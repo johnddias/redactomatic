@@ -17,8 +17,13 @@ from document_extractors import UNKNOWN, extract, write_holdings_markdown
 _SSN_RE = re.compile(r"^(\d{3})-(\d{2})-(\d{4})$")
 
 # Matches "(Acct # NNNN)" style account references, three separate
-# pdfplumber words: '(Acct', '#', 'NNNN)'.
-_ACCT_NUM_RE = re.compile(r"^\d+\)?$")
+# pdfplumber words: '(Acct', '#', '<number>)'. The number itself varies
+# in format -- a bare 4-digit account reference on documents that already
+# had a longer identifier redacted out of them, or a full dash-separated
+# account number on an untouched original -- so this matches digits and
+# dashes generically rather than assuming one shape, to make sure the
+# *whole* token gets redacted.
+_ACCT_NUM_RE = re.compile(r"^[\d-]+\)?$")
 
 
 # ---------------------------------------------------------------------------
