@@ -23,7 +23,21 @@ import pdfplumber
 from .base import Holding
 
 HEADER_ANCHOR = {"Description", "Quantity"}
-FOOTER_MARKERS = ("Page ", "footnotes")
+# "Total Account Value :" is the last real line of a page-table's holdings
+# section -- immediately followed by a boilerplate legend paragraph
+# ("Unless otherwise noted...", "AI Pricing Method:", ...) and then the
+# "Page N of NN" footer. Bare "TOTAL " is deliberately *not* a marker here:
+# asset-class subtotals ("TOTAL CASH & SWEEP FUNDS", "TOTAL EQUITY") appear
+# mid-table, between one asset class's holdings and the next, so stopping
+# on those would drop real holdings below them.
+FOOTER_MARKERS = ("Page ", "footnotes", "Total Account Value :")
+
+# A Quantity/Price/Market Value cell for a real holding is always a plain
+# number (possibly with thousands separators and a decimal point). The
+# legend paragraph printed below "Total Account Value :" is long enough
+# that its words happen to land in these column x-ranges too, so without
+# this check that boilerplate gets misread as a holding's figures.
+_NUMERIC_CELL_RE = re.compile(r"^\(?-?[\d,]+(\.\d+)?\)?$")
 
 # Tokens that mark the start of footnote/label content within the
 # Description column -- text at or after these is never part of the
@@ -31,6 +45,20 @@ FOOTER_MARKERS = ("Page ", "footnotes")
 _FOOTNOTE_BREAK_TOKENS = {"EST", "YIELD:"}
 _NOISE_TOKENS = {"I", "WILL", "SHOW"}
 _PERCENT_RE = re.compile(r"^\d+(\.\d+)?%$")
+
+# Matches "(Acct # NNNN)" style account references, three separate
+# pdfplumber words: '(Acct', '#', '<number>)'. The visible number varies
+# in format across documents -- a bare 4-digit reference on copies that
+# already had a longer identifier redacted out, or a full dash-separated
+# account number on an untouched original -- so this pulls just the
+# trailing 4 digits as the canonical account label regardless of what
+# precedes them, matching the short account-number form used everywhere
+# else in a combined multi-account statement (filenames, statement
+# sections). Mirrors redactor.py's _ACCT_NUM_RE, which locates the same
+# token for row-scoped redaction of the *whole* number.
+_ACCT_NUM_RE = re.compile(r"(\d{4})\)?$")
+
+UNKNOWN_ACCOUNT = "UNKNOWN"
 
 # Column gap (px) below which two adjacent header words are treated as
 # one logical column (e.g. "Market" + "Value" -> "Market Value").
@@ -110,11 +138,44 @@ def _description_fragment(desc_words):
             break
         tokens.append(t)
     frag = " ".join(tokens).strip()
-    return "" if _PERCENT_RE.match(frag) else frag
+    if _PERCENT_RE.match(frag):
+        return ""
+    # Asset-class subtotal lines ("TOTAL CASH & SWEEP FUNDS", "TOTAL
+    # EQUITY") can appear mid-table, between one asset class's holdings
+    # and the next -- as continuation-only rows they'd otherwise get
+    # appended onto whichever real holding preceded them.
+    if frag.startswith("TOTAL "):
+        return ""
+    return frag
+
+
+def _is_numeric_cell(text: str) -> bool:
+    return bool(_NUMERIC_CELL_RE.match(text))
 
 
 def _row_text(by_col, name):
     return " ".join(w["text"] for w in sorted(by_col.get(name, []), key=lambda w: w["x0"]))
+
+
+def _detect_account(page) -> str:
+    """Return the account number active on *page* from "(Acct # NNNN)".
+
+    These statements repeat "JPMS LLC IRA (Acct # NNNN) ... Statement
+    Period: ..." on one line of every page belonging to that account's
+    section, so this is a reliable per-page marker for which of the
+    (possibly several) accounts in one combined statement a given
+    holdings row belongs to. Returns UNKNOWN_ACCOUNT when the page
+    carries no such marker (e.g. a cover or disclosures page), so a
+    holding is never silently mislabeled with the wrong account.
+    """
+    words = page.extract_words(use_text_flow=False, keep_blank_chars=False)
+    for i in range(len(words) - 2):
+        w1, w2, w3 = words[i], words[i + 1], words[i + 2]
+        if w1["text"] == "(Acct" and w2["text"] == "#":
+            m = _ACCT_NUM_RE.search(w3["text"])
+            if m:
+                return m.group(1)
+    return UNKNOWN_ACCOUNT
 
 
 def _row_bbox(row_words):
@@ -126,7 +187,7 @@ def _row_bbox(row_words):
     )
 
 
-def _extract_page_holdings(page, page_no):
+def _extract_page_holdings(page, page_no, account):
     words = page.extract_words(use_text_flow=False, keep_blank_chars=False)
     if not words:
         return []
@@ -154,10 +215,11 @@ def _extract_page_holdings(page, page_no):
             price = _row_text(by_col, "Price")
             mv = _row_text(by_col, "Market Value")
 
-            if frag and qty and price and mv:
+            if frag and _is_numeric_cell(qty) and _is_numeric_cell(price) and _is_numeric_cell(mv):
                 if current:
                     holdings.append(current)
                 current = Holding(
+                    account=account,
                     page=page_no,
                     description=frag,
                     quantity=qty,
@@ -192,5 +254,6 @@ def extract_holdings(pdf_path: str) -> list[Holding]:
     holdings = []
     with pdfplumber.open(pdf_path) as pdf:
         for page_no, page in enumerate(pdf.pages, start=1):
-            holdings.extend(_extract_page_holdings(page, page_no))
+            account = _detect_account(page)
+            holdings.extend(_extract_page_holdings(page, page_no, account))
     return holdings

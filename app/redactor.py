@@ -16,9 +16,14 @@ from document_extractors import UNKNOWN, extract, write_holdings_markdown
 # Matches standard SSN format: 123-45-6789
 _SSN_RE = re.compile(r"^(\d{3})-(\d{2})-(\d{4})$")
 
-# Matches "(Acct # 6038)" / "(Acct # 6038" style account references, three
-# separate pdfplumber words: '(Acct', '#', '6038)'.
-_ACCT_NUM_RE = re.compile(r"^\d+\)?$")
+# Matches "(Acct # NNNN)" style account references, three separate
+# pdfplumber words: '(Acct', '#', '<number>)'. The number itself varies
+# in format -- a bare 4-digit account reference on documents that already
+# had a longer identifier redacted out of them, or a full dash-separated
+# account number on an untouched original -- so this matches digits and
+# dashes generically rather than assuming one shape, to make sure the
+# *whole* token gets redacted.
+_ACCT_NUM_RE = re.compile(r"^[\d-]+\)?$")
 
 
 # ---------------------------------------------------------------------------
@@ -125,7 +130,7 @@ def _redact_page(page: fitz.Page, terms: list[str]) -> int:
 def _redact_account_numbers(page: fitz.Page, plumber_page) -> int:
     """Redact just the digits of "(Acct # NNNN)" references, row-scoped.
 
-    These statements repeat "JPMS LLC IRA (Acct # 6038) ... Statement
+    These statements repeat "JPMS LLC IRA (Acct # NNNN) ... Statement
     Period: ..." on one line per page. Redacting the whole line (or a
     naive full-page text search for the bare account number) risks
     bleeding into unrelated data sharing that row -- e.g. a market value
