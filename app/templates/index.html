@@ -10,6 +10,7 @@
     :root {
       --bg:        #0f1117;
       --surface:   #1a1d27;
+      --surface-2: #22273a;
       --border:    #2e3145;
       --accent:    #e63946;
       --accent-dk: #b52d38;
@@ -71,6 +72,8 @@
       margin-bottom: 1.25rem;
     }
 
+    .h2-row { display: flex; align-items: center; justify-content: space-between; }
+
     /* ---- drop zone ---- */
     .drop-zone {
       border: 2px dashed var(--border);
@@ -109,13 +112,67 @@
       color: var(--muted);
     }
 
-    .drop-zone .filename {
-      margin-top: 0.6rem;
-      font-size: 0.85rem;
-      color: var(--success);
-      font-weight: 500;
-      min-height: 1.2em;
+    /* ---- file list ---- */
+    .file-list {
+      margin-top: 1rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
     }
+
+    .file-row {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0.6rem 0.75rem;
+      font-size: 0.85rem;
+    }
+
+    .file-row .file-icon { font-size: 1.1rem; flex-shrink: 0; }
+
+    .file-row .file-meta { flex: 1; min-width: 0; }
+
+    .file-row .file-name {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .file-row .file-size { color: var(--muted); font-size: 0.75rem; }
+
+    .file-row .file-error { color: var(--accent); font-size: 0.75rem; margin-top: 0.15rem; }
+
+    .status-pill {
+      flex-shrink: 0;
+      padding: 0.2rem 0.6rem;
+      border-radius: 99px;
+      font-size: 0.72rem;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+
+    .status-pending    { background: rgba(122,127,154,0.15); color: var(--muted); }
+    .status-queued     { background: rgba(122,127,154,0.15); color: var(--muted); }
+    .status-processing { background: rgba(245,166,35,0.15); color: var(--warn); }
+    .status-success     { background: rgba(46,194,126,0.15); color: var(--success); }
+    .status-error       { background: rgba(230,57,70,0.15); color: var(--accent); }
+    .status-invalid      { background: rgba(230,57,70,0.15); color: var(--accent); }
+
+    .file-remove {
+      flex-shrink: 0;
+      background: none;
+      border: none;
+      color: var(--muted);
+      font-size: 1rem;
+      cursor: pointer;
+      line-height: 1;
+      padding: 0.2rem 0.35rem;
+    }
+
+    .file-remove:hover { color: var(--accent); }
 
     /* ---- control file text area ---- */
     .ctrl-toggle {
@@ -147,7 +204,7 @@
 
     textarea {
       width: 100%;
-      height: 160px;
+      height: 140px;
       background: var(--bg);
       border: 1px solid var(--border);
       border-radius: var(--radius);
@@ -167,6 +224,104 @@
       font-size: 0.78rem;
       color: var(--muted);
     }
+
+    /* ---- control file viewer ---- */
+    .ctrl-viewer-toggle {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--muted);
+      border-radius: 6px;
+      font-size: 0.78rem;
+      padding: 0.3rem 0.6rem;
+      cursor: pointer;
+    }
+
+    .ctrl-viewer-toggle:hover { border-color: var(--accent); color: var(--accent); }
+
+    #ctrl-viewer { display: none; margin-top: 1.25rem; border-top: 1px solid var(--border); padding-top: 1.25rem; }
+
+    .ctrl-group { margin-bottom: 1rem; }
+
+    .ctrl-group-name {
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--muted);
+      margin-bottom: 0.4rem;
+    }
+
+    .ctrl-term-row {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      margin-bottom: 0.35rem;
+    }
+
+    .ctrl-term-row input[type="text"] {
+      flex: 1;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text);
+      font-size: 0.85rem;
+      padding: 0.4rem 0.6rem;
+      outline: none;
+    }
+
+    .ctrl-term-row input[type="text"]:focus { border-color: var(--accent); }
+
+    .ctrl-add-term {
+      background: none;
+      border: 1px dashed var(--border);
+      color: var(--muted);
+      border-radius: 6px;
+      font-size: 0.78rem;
+      padding: 0.3rem 0.6rem;
+      cursor: pointer;
+      width: 100%;
+      text-align: center;
+    }
+
+    .ctrl-add-term:hover { border-color: var(--accent); color: var(--accent); }
+
+    .ctrl-viewer-actions {
+      display: flex;
+      gap: 0.5rem;
+      margin-top: 1rem;
+    }
+
+    .btn-secondary {
+      flex: 1;
+      padding: 0.55rem 0.75rem;
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      color: var(--text);
+      border-radius: 8px;
+      font-size: 0.82rem;
+      cursor: pointer;
+      transition: border-color 0.2s;
+    }
+
+    .btn-secondary:hover { border-color: var(--accent); }
+
+    /* ---- options ---- */
+    .option-row {
+      display: flex;
+      align-items: flex-start;
+      gap: 0.65rem;
+    }
+
+    .option-row input[type="checkbox"] {
+      width: 1.05rem;
+      height: 1.05rem;
+      margin-top: 0.15rem;
+      accent-color: var(--accent);
+      cursor: pointer;
+    }
+
+    .option-row label { font-size: 0.9rem; cursor: pointer; }
+
+    .option-row .hint { margin-top: 0.2rem; }
 
     /* ---- submit ---- */
     .btn-primary {
@@ -193,9 +348,9 @@
     .progress-bar-wrap {
       background: var(--bg);
       border-radius: 99px;
-      height: 6px;
+      height: 8px;
       overflow: hidden;
-      margin-bottom: 1rem;
+      margin-bottom: 0.75rem;
     }
 
     .progress-bar {
@@ -206,21 +361,39 @@
       border-radius: 99px;
     }
 
-    .progress-bar.indeterminate {
-      width: 40%;
-      animation: slide 1.2s infinite ease-in-out;
-    }
-
-    @keyframes slide {
-      0%   { transform: translateX(-100%); }
-      100% { transform: translateX(300%); }
-    }
-
-    #status-msg {
-      font-size: 0.9rem;
+    .status-line {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.85rem;
       color: var(--muted);
-      text-align: center;
+      margin-bottom: 0.25rem;
     }
+
+    #status-current-file {
+      font-size: 0.85rem;
+      color: var(--text);
+      margin-bottom: 1rem;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .btn-cancel {
+      display: block;
+      width: 100%;
+      padding: 0.65rem;
+      margin-top: 0.5rem;
+      background: transparent;
+      border: 1px solid var(--accent);
+      color: var(--accent);
+      border-radius: var(--radius);
+      font-size: 0.85rem;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .btn-cancel:hover:not(:disabled) { background: rgba(230,57,70,0.1); }
+    .btn-cancel:disabled { opacity: 0.5; cursor: not-allowed; }
 
     /* ---- result ---- */
     #result-card { display: none; }
@@ -241,6 +414,7 @@
 
     .badge-success { background: rgba(46,194,126,0.15); color: var(--success); }
     .badge-info    { background: rgba(122,127,154,0.15); color: var(--muted); }
+    .badge-error   { background: rgba(230,57,70,0.15); color: var(--accent); }
 
     .btn-download {
       display: block;
@@ -259,13 +433,6 @@
     }
 
     .btn-download:hover { filter: brightness(1.1); }
-
-    .btn-download-secondary {
-      background: var(--surface);
-      color: var(--text);
-      border: 1px solid var(--border);
-      margin-top: 0.75rem;
-    }
 
     .btn-reset {
       display: block;
@@ -307,22 +474,25 @@
 
 <header>
   <h1><span>Redacto</span>matic</h1>
-  <p>Permanently redact PII from PDF documents</p>
+  <p>Permanently redact PII from PDF documents &mdash; one file or a whole batch</p>
 </header>
 
 <!-- Upload card -->
 <div class="card" id="upload-card">
-  <h2>1 &mdash; Select PDF</h2>
+  <h2>1 &mdash; Select PDFs</h2>
   <div class="drop-zone" id="pdf-drop">
-    <input type="file" id="pdf-input" accept=".pdf" />
+    <input type="file" id="pdf-input" accept=".pdf" multiple />
     <span class="icon">&#128196;</span>
-    <span class="label">Drop a PDF here or click to browse</span>
-    <div class="filename" id="pdf-name"></div>
+    <span class="label">Drop one or more PDFs here or click to browse</span>
   </div>
+  <div class="file-list" id="file-list"></div>
 </div>
 
 <div class="card" id="control-card">
-  <h2>2 &mdash; PII Control List</h2>
+  <div class="h2-row">
+    <h2>2 &mdash; PII Control List</h2>
+    <button class="ctrl-viewer-toggle" id="ctrl-viewer-toggle" onclick="toggleCtrlViewer()">View / edit rules</button>
+  </div>
 
   <div class="ctrl-toggle">
     <button class="active" id="btn-upload-ctrl" onclick="switchCtrl('file')">Upload file</button>
@@ -331,12 +501,12 @@
 
   <div id="ctrl-file-panel">
     <div class="drop-zone" id="ctrl-drop">
-      <input type="file" id="ctrl-input" accept=".txt,.text,.csv" />
+      <input type="file" id="ctrl-input" accept=".txt,.text,.csv,.json" />
       <span class="icon">&#128221;</span>
-      <span class="label">Drop a .txt control file or click to browse</span>
-      <div class="filename" id="ctrl-name"></div>
+      <span class="label">Drop a .txt/.json control file or click to browse</span>
+      <div class="filename" id="ctrl-name" style="margin-top:0.6rem;font-size:0.85rem;color:var(--success);font-weight:500;min-height:1.2em;"></div>
     </div>
-    <p class="hint">One PII term per line. Lines starting with # are ignored.</p>
+    <p class="hint">One PII term per line. Lines starting with # are ignored. A previously saved .json control file also works.</p>
   </div>
 
   <div id="ctrl-text-panel">
@@ -345,28 +515,57 @@
     <p class="hint">One PII term per line. Lines starting with # are ignored.</p>
   </div>
 
-  <button class="btn-primary" id="redact-btn" onclick="startRedact()">Redact Document</button>
+  <!-- Control File Viewer -->
+  <div id="ctrl-viewer">
+    <div id="ctrl-groups"></div>
+    <div class="ctrl-viewer-actions">
+      <button class="btn-secondary" onclick="saveControlAsJson()">Save as .json</button>
+    </div>
+    <p class="hint">Edits here are applied to the batch. Loading a control file above refreshes this view.</p>
+  </div>
+</div>
+
+<div class="card" id="options-card">
+  <h2>3 &mdash; Options</h2>
+  <div class="option-row">
+    <input type="checkbox" id="build-tables" checked onchange="persistSettings()" />
+    <div>
+      <label for="build-tables">Build tables for redacted output</label>
+      <p class="hint">Applies to the whole batch. When enabled, recognized statement types get a companion holdings-table file alongside the redacted PDF.</p>
+    </div>
+  </div>
+</div>
+
+<div class="card" id="submit-card">
+  <button class="btn-primary" id="redact-btn" onclick="startBatch()">Redact Batch</button>
 </div>
 
 <!-- Status card -->
 <div class="card" id="status-card">
   <h2>Processing</h2>
-  <div class="progress-bar-wrap">
-    <div class="progress-bar indeterminate" id="progress-bar"></div>
+  <div class="status-line">
+    <span id="status-progress-text">Starting&hellip;</span>
+    <span id="status-percent"></span>
   </div>
-  <p id="status-msg">Uploading and redacting&hellip;</p>
+  <div class="progress-bar-wrap">
+    <div class="progress-bar" id="progress-bar"></div>
+  </div>
+  <div id="status-current-file"></div>
+  <div class="file-list" id="status-file-list"></div>
+  <button class="btn-cancel" id="cancel-btn" onclick="cancelBatch()">Cancel batch</button>
 </div>
 
 <!-- Result card -->
 <div class="card" id="result-card">
-  <h2>Redaction Complete</h2>
+  <h2 id="result-heading">Batch Complete</h2>
   <div class="result-meta">
-    <span class="badge badge-success" id="badge-redactions"></span>
-    <span class="badge badge-info" id="badge-filename"></span>
+    <span class="badge badge-success" id="badge-success"></span>
+    <span class="badge badge-error" id="badge-errors" style="display:none"></span>
+    <span class="badge badge-info" id="badge-redactions"></span>
   </div>
-  <a class="btn-download" id="download-link" href="#" download>Download redacted PDF</a>
-  <a class="btn-download btn-download-secondary" id="tables-download-link" href="#" download style="display:none">Download holdings tables (.md)</a>
-  <button class="btn-reset" onclick="resetForm()">Redact another document</button>
+  <div class="file-list" id="result-file-list" style="margin-bottom:1.25rem"></div>
+  <a class="btn-download" id="download-link" href="#" download style="display:none">Download ZIP</a>
+  <button class="btn-reset" onclick="resetForm()">Redact another batch</button>
 </div>
 
 <!-- Error card -->
@@ -381,38 +580,107 @@
 </footer>
 
 <script>
-  // ---- drop zone wiring ----
-  function wireDrop(dropId, inputId, nameId) {
+  // ---------------------------------------------------------------------
+  // State
+  // ---------------------------------------------------------------------
+  let selectedFiles = [];      // [{file, status, error}]
+  let currentControlText = '';
+  let ctrlMode = 'file';
+  let pollTimer = null;
+  let currentJobId = null;
+  let cancelRequested = false;
+
+  const SESSION_KEY_CONTROL = 'redactomatic_control_text';
+  const SESSION_KEY_TABLES  = 'redactomatic_build_tables';
+
+  // ---------------------------------------------------------------------
+  // Utilities
+  // ---------------------------------------------------------------------
+  function show(id) { document.getElementById(id).style.display = 'block'; }
+  function hide(id) { document.getElementById(id).style.display = 'none'; }
+
+  function formatSize(bytes) {
+    if (bytes < 1024) return bytes + ' B';
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+    return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+  }
+
+  function escapeHtml(str) {
+    const d = document.createElement('div');
+    d.textContent = str;
+    return d.innerHTML;
+  }
+
+  // ---------------------------------------------------------------------
+  // Multi-file drop zone
+  // ---------------------------------------------------------------------
+  function addFiles(fileArray) {
+    for (const file of fileArray) {
+      const isPdf = /\.pdf$/i.test(file.name);
+      selectedFiles.push({
+        file,
+        status: isPdf ? 'pending' : 'invalid',
+        error: isPdf ? null : 'Unsupported format — only .pdf files are accepted.',
+      });
+    }
+    renderFileList();
+  }
+
+  function removeFile(index) {
+    selectedFiles.splice(index, 1);
+    renderFileList();
+  }
+
+  function renderFileList() {
+    const list = document.getElementById('file-list');
+    if (!selectedFiles.length) { list.innerHTML = ''; return; }
+
+    list.innerHTML = selectedFiles.map((entry, i) => {
+      const pillClass = 'status-' + entry.status;
+      const pillLabel = {
+        pending: 'Pending', invalid: 'Unsupported', queued: 'Queued',
+        processing: 'Processing', success: 'Done', error: 'Error',
+      }[entry.status] || entry.status;
+
+      return `
+        <div class="file-row">
+          <span class="file-icon">&#128196;</span>
+          <div class="file-meta">
+            <div class="file-name">${escapeHtml(entry.file.name)}</div>
+            <div class="file-size">${formatSize(entry.file.size)}</div>
+            ${entry.error ? `<div class="file-error">${escapeHtml(entry.error)}</div>` : ''}
+          </div>
+          <span class="status-pill ${pillClass}">${pillLabel}</span>
+          <button class="file-remove" onclick="removeFile(${i})" title="Remove">&times;</button>
+        </div>`;
+    }).join('');
+  }
+
+  function wireMultiDrop(dropId, inputId, onFiles) {
     const drop  = document.getElementById(dropId);
     const input = document.getElementById(inputId);
-    const name  = document.getElementById(nameId);
 
     input.addEventListener('change', () => {
-      name.textContent = input.files[0]?.name ?? '';
+      onFiles(Array.from(input.files));
+      input.value = '';
     });
 
-    ['dragenter','dragover'].forEach(ev =>
+    ['dragenter', 'dragover'].forEach(ev =>
       drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.add('drag-over'); })
     );
-    ['dragleave','drop'].forEach(ev =>
+    ['dragleave', 'drop'].forEach(ev =>
       drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.remove('drag-over'); })
     );
     drop.addEventListener('drop', e => {
-      const file = e.dataTransfer.files[0];
-      if (!file) return;
-      const dt = new DataTransfer();
-      dt.items.add(file);
-      input.files = dt.files;
-      name.textContent = file.name;
+      onFiles(Array.from(e.dataTransfer.files));
     });
   }
 
-  wireDrop('pdf-drop',  'pdf-input',  'pdf-name');
-  wireDrop('ctrl-drop', 'ctrl-input', 'ctrl-name');
+  wireMultiDrop('pdf-drop', 'pdf-input', addFiles);
 
-  // ---- control file toggle ----
-  let ctrlMode = 'file';
-
+  // ---------------------------------------------------------------------
+  // Control file: upload / paste
+  // ---------------------------------------------------------------------
   function switchCtrl(mode) {
     ctrlMode = mode;
     document.getElementById('ctrl-file-panel').style.display = mode === 'file' ? 'block' : 'none';
@@ -421,78 +689,230 @@
     document.getElementById('btn-text-ctrl').classList.toggle('active', mode === 'text');
   }
 
-  // ---- redaction ----
-  function show(id)   { document.getElementById(id).style.display = 'block'; }
-  function hide(id)   { document.getElementById(id).style.display = 'none'; }
+  function setControlText(text) {
+    currentControlText = text;
+    document.getElementById('ctrl-textarea').value = text;
+    renderCtrlViewer();
+    persistSettings();
+  }
 
-  async function startRedact() {
-    const pdfInput  = document.getElementById('pdf-input');
-    const ctrlInput = document.getElementById('ctrl-input');
-    const ctrlText  = document.getElementById('ctrl-textarea').value.trim();
+  document.getElementById('ctrl-textarea').addEventListener('input', (e) => {
+    currentControlText = e.target.value;
+    renderCtrlViewer();
+    persistSettings();
+  });
 
-    if (!pdfInput.files.length) {
-      alert('Please select a PDF file.');
-      return;
-    }
+  function readFileAsText(file) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = reject;
+      reader.readAsText(file);
+    });
+  }
 
-    if (ctrlMode === 'file' && !ctrlInput.files.length) {
-      alert('Please select a control file.');
-      return;
-    }
-
-    if (ctrlMode === 'text' && !ctrlText) {
-      alert('Please enter at least one PII term.');
-      return;
-    }
-
-    // Build form data
-    const fd = new FormData();
-    fd.append('pdf_file', pdfInput.files[0]);
-
-    if (ctrlMode === 'file') {
-      fd.append('control_file', ctrlInput.files[0]);
+  wireMultiDrop('ctrl-drop', 'ctrl-input', async (files) => {
+    const file = files[0];
+    if (!file) return;
+    document.getElementById('ctrl-name').textContent = file.name;
+    const raw = await readFileAsText(file);
+    if (/\.json$/i.test(file.name)) {
+      try {
+        const parsed = JSON.parse(raw);
+        setControlText(groupsToText(parsed.groups || []));
+      } catch (err) {
+        alert('That .json file is not a valid saved control file: ' + err.message);
+      }
     } else {
-      const blob = new Blob([ctrlText], { type: 'text/plain' });
-      fd.append('control_file', blob, 'control.txt');
+      setControlText(raw);
+    }
+  });
+
+  // ---------------------------------------------------------------------
+  // Control File Viewer (parse <-> editable groups <-> plaintext)
+  // ---------------------------------------------------------------------
+  function parseControlText(text) {
+    const groups = [];
+    let current = null;
+    for (const rawLine of text.split(/\r?\n/)) {
+      const line = rawLine.trim();
+      if (!line) continue;
+      const headerMatch = line.match(/^#\s*-{2,}\s*(.+?)\s*-{2,}\s*$/);
+      if (headerMatch) {
+        current = { name: headerMatch[1], terms: [] };
+        groups.push(current);
+        continue;
+      }
+      if (line.startsWith('#')) continue; // plain comment, not a group header
+      if (!current) {
+        current = { name: 'Terms', terms: [] };
+        groups.push(current);
+      }
+      current.terms.push(line);
+    }
+    return groups;
+  }
+
+  function groupsToText(groups) {
+    const parts = [];
+    for (const g of groups) {
+      if (!g.terms.length) continue;
+      parts.push(`# --- ${g.name} ---`);
+      parts.push(...g.terms);
+      parts.push('');
+    }
+    return parts.join('\n').trim() + '\n';
+  }
+
+  function renderCtrlViewer() {
+    const groups = parseControlText(currentControlText);
+    const container = document.getElementById('ctrl-groups');
+
+    if (!groups.length) {
+      container.innerHTML = '<p class="hint">No terms yet &mdash; add one below.</p>';
+    } else {
+      container.innerHTML = groups.map((g, gi) => `
+        <div class="ctrl-group">
+          <div class="ctrl-group-name">${escapeHtml(g.name)}</div>
+          ${g.terms.map((t, ti) => `
+            <div class="ctrl-term-row">
+              <input type="text" value="${escapeHtml(t)}" onchange="editTerm(${gi}, ${ti}, this.value)" />
+              <button class="file-remove" onclick="removeTerm(${gi}, ${ti})" title="Remove">&times;</button>
+            </div>`).join('')}
+        </div>`).join('');
+    }
+    container.innerHTML += '<button class="ctrl-add-term" onclick="addTerm()">+ Add term</button>';
+  }
+
+  function editTerm(gi, ti, value) {
+    const groups = parseControlText(currentControlText);
+    groups[gi].terms[ti] = value;
+    currentControlText = groupsToText(groups);
+    document.getElementById('ctrl-textarea').value = currentControlText;
+    persistSettings();
+    renderCtrlViewer();
+  }
+
+  function removeTerm(gi, ti) {
+    const groups = parseControlText(currentControlText);
+    groups[gi].terms.splice(ti, 1);
+    currentControlText = groupsToText(groups);
+    document.getElementById('ctrl-textarea').value = currentControlText;
+    persistSettings();
+    renderCtrlViewer();
+  }
+
+  function addTerm() {
+    const groups = parseControlText(currentControlText);
+    if (!groups.length) groups.push({ name: 'Terms', terms: [] });
+    const term = prompt('New PII term:');
+    if (!term) return;
+    groups[groups.length - 1].terms.push(term.trim());
+    currentControlText = groupsToText(groups);
+    document.getElementById('ctrl-textarea').value = currentControlText;
+    persistSettings();
+    renderCtrlViewer();
+  }
+
+  function toggleCtrlViewer() {
+    const viewer = document.getElementById('ctrl-viewer');
+    const isOpen = viewer.style.display === 'block';
+    viewer.style.display = isOpen ? 'none' : 'block';
+    if (!isOpen) renderCtrlViewer();
+  }
+
+  function saveControlAsJson() {
+    const groups = parseControlText(currentControlText);
+    const payload = { version: 1, saved_at: new Date().toISOString(), groups };
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'redactomatic-control-' + new Date().toISOString().slice(0, 10) + '.json';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  }
+
+  // ---------------------------------------------------------------------
+  // Session persistence
+  // ---------------------------------------------------------------------
+  function persistSettings() {
+    try {
+      sessionStorage.setItem(SESSION_KEY_CONTROL, currentControlText);
+      sessionStorage.setItem(SESSION_KEY_TABLES, document.getElementById('build-tables').checked ? '1' : '0');
+    } catch (e) { /* sessionStorage unavailable - ignore */ }
+  }
+
+  function restoreSettings() {
+    try {
+      const text = sessionStorage.getItem(SESSION_KEY_CONTROL);
+      const tables = sessionStorage.getItem(SESSION_KEY_TABLES);
+      if (text) {
+        currentControlText = text;
+        document.getElementById('ctrl-textarea').value = text;
+        switchCtrl('text');
+      }
+      if (tables !== null) {
+        document.getElementById('build-tables').checked = tables === '1';
+      }
+    } catch (e) { /* sessionStorage unavailable - ignore */ }
+  }
+
+  restoreSettings();
+
+  // ---------------------------------------------------------------------
+  // Batch submission
+  // ---------------------------------------------------------------------
+  async function startBatch() {
+    const validFiles = selectedFiles.filter(e => e.status !== 'invalid');
+
+    if (!validFiles.length) {
+      alert('Please select at least one valid PDF file.');
+      return;
     }
 
-    // UI state
+    if (ctrlMode === 'text') currentControlText = document.getElementById('ctrl-textarea').value.trim();
+    if (!currentControlText.trim()) {
+      alert('Please provide a control file or at least one PII term.');
+      return;
+    }
+
+    const fd = new FormData();
+    validFiles.forEach(entry => fd.append('files', entry.file));
+    const blob = new Blob([currentControlText], { type: 'text/plain' });
+    fd.append('control_file', blob, 'control.txt');
+    fd.append('build_tables', document.getElementById('build-tables').checked ? 'true' : 'false');
+
+    validFiles.forEach(entry => entry.status = 'queued');
+    renderFileList();
+
     hide('upload-card');
     hide('control-card');
+    hide('options-card');
+    hide('submit-card');
     hide('result-card');
     hide('error-card');
     show('status-card');
+    cancelRequested = false;
+    document.getElementById('cancel-btn').disabled = false;
+    document.getElementById('cancel-btn').textContent = 'Cancel batch';
 
     try {
-      const resp = await fetch('/redact', { method: 'POST', body: fd });
+      const resp = await fetch('/batch', { method: 'POST', body: fd });
       const data = await resp.json();
 
-      hide('status-card');
-
       if (!resp.ok || data.error) {
+        hide('status-card');
         document.getElementById('error-msg').textContent = data.error ?? 'Unknown error.';
         show('error-card');
         return;
       }
 
-      const link = document.getElementById('download-link');
-      link.href = '/download/' + data.download_token;
-      link.download = data.output_file;
-
-      const tablesLink = document.getElementById('tables-download-link');
-      if (data.tables_download_token) {
-        tablesLink.href = '/download/' + data.tables_download_token;
-        tablesLink.download = data.tables_file;
-        tablesLink.style.display = 'block';
-      } else {
-        tablesLink.style.display = 'none';
-      }
-
-      document.getElementById('badge-redactions').textContent =
-        data.redactions + (data.redactions === 1 ? ' redaction' : ' redactions') + ' applied';
-      document.getElementById('badge-filename').textContent = data.output_file;
-
-      show('result-card');
+      currentJobId = data.job_id;
+      pollStatus();
+      pollTimer = setInterval(pollStatus, 1000);
 
     } catch (err) {
       hide('status-card');
@@ -501,17 +921,163 @@
     }
   }
 
+  async function pollStatus() {
+    if (!currentJobId) return;
+    try {
+      const resp = await fetch('/batch/' + currentJobId + '/status');
+      const data = await resp.json();
+      if (!resp.ok || data.error) {
+        stopPolling();
+        hide('status-card');
+        document.getElementById('error-msg').textContent = data.error ?? 'Lost track of the batch job.';
+        show('error-card');
+        return;
+      }
+      renderStatus(data);
+
+      if (data.state === 'complete' || data.state === 'cancelled' || data.state === 'error') {
+        stopPolling();
+        showResult(data);
+      }
+    } catch (err) {
+      // Transient network hiccup - keep polling, the interval will retry.
+    }
+  }
+
+  function stopPolling() {
+    if (pollTimer) clearInterval(pollTimer);
+    pollTimer = null;
+  }
+
+  function renderStatus(data) {
+    const total = data.total || 0;
+    const completed = data.completed || 0;
+    const percent = total ? Math.round((completed / total) * 100) : 0;
+
+    document.getElementById('progress-bar').style.width = percent + '%';
+    document.getElementById('status-percent').textContent = percent + '%';
+
+    if (data.current_file) {
+      document.getElementById('status-progress-text').textContent =
+        `Processing file ${data.current_index} of ${total}`;
+      document.getElementById('status-current-file').textContent = data.current_file;
+    } else {
+      document.getElementById('status-progress-text').textContent = `${completed} of ${total} complete`;
+      document.getElementById('status-current-file').textContent = '';
+    }
+
+    if (typeof data.eta_seconds === 'number' && data.state === 'running') {
+      document.getElementById('status-current-file').textContent +=
+        data.current_file ? `  — ~${Math.ceil(data.eta_seconds)}s remaining` : '';
+    }
+
+    // Reflect per-file progress on the shared file list.
+    (data.results || []).forEach((r, i) => {
+      if (selectedFiles[i]) selectedFiles[i].status = r.status === 'success' ? 'success' : 'error';
+      if (selectedFiles[i] && r.status !== 'success') selectedFiles[i].error = r.error || 'Redaction failed.';
+    });
+    if (data.current_index && selectedFiles[data.current_index - 1] &&
+        selectedFiles[data.current_index - 1].status === 'queued') {
+      selectedFiles[data.current_index - 1].status = 'processing';
+    }
+    renderStatusFileList();
+  }
+
+  function renderStatusFileList() {
+    document.getElementById('status-file-list').innerHTML =
+      selectedFiles.filter(e => e.status !== 'invalid').map(entry => {
+        const pillClass = 'status-' + entry.status;
+        const pillLabel = {
+          queued: 'Queued', processing: 'Processing', success: 'Done', error: 'Error',
+        }[entry.status] || entry.status;
+        return `
+          <div class="file-row">
+            <span class="file-icon">&#128196;</span>
+            <div class="file-meta">
+              <div class="file-name">${escapeHtml(entry.file.name)}</div>
+            </div>
+            <span class="status-pill ${pillClass}">${pillLabel}</span>
+          </div>`;
+      }).join('');
+  }
+
+  async function cancelBatch() {
+    if (!currentJobId || cancelRequested) return;
+    if (!confirm('Cancel this batch? Files already processed will not be included in a download.')) return;
+    cancelRequested = true;
+    document.getElementById('cancel-btn').disabled = true;
+    document.getElementById('cancel-btn').textContent = 'Cancelling…';
+    try {
+      await fetch('/batch/' + currentJobId + '/cancel', { method: 'POST' });
+    } catch (err) { /* the next poll will surface any resulting state */ }
+  }
+
+  function showResult(data) {
+    hide('status-card');
+
+    const results = data.results || [];
+    const successCount = results.filter(r => r.status === 'success').length;
+    const errorCount = results.filter(r => r.status !== 'success').length;
+    const totalRedactions = results.reduce((sum, r) => sum + (r.redactions || 0), 0);
+
+    document.getElementById('result-heading').textContent =
+      data.state === 'cancelled' ? 'Batch Cancelled' :
+      data.state === 'error' ? 'Batch Failed' : 'Batch Complete';
+
+    document.getElementById('badge-success').textContent = `${successCount} succeeded`;
+    const errBadge = document.getElementById('badge-errors');
+    if (errorCount) {
+      errBadge.textContent = `${errorCount} failed`;
+      errBadge.style.display = 'inline-block';
+    } else {
+      errBadge.style.display = 'none';
+    }
+    document.getElementById('badge-redactions').textContent =
+      totalRedactions + (totalRedactions === 1 ? ' redaction' : ' redactions') + ' applied';
+
+    document.getElementById('result-file-list').innerHTML = results.map(r => {
+      const status = r.status === 'success' ? 'success' : 'error';
+      const label = status === 'success' ? 'Done' : 'Error';
+      return `
+        <div class="file-row">
+          <span class="file-icon">&#128196;</span>
+          <div class="file-meta">
+            <div class="file-name">${escapeHtml(r.original_filename)}</div>
+            ${r.error ? `<div class="file-error">${escapeHtml(r.error)}</div>` : ''}
+          </div>
+          <span class="status-pill status-${status}">${label}</span>
+        </div>`;
+    }).join('');
+
+    const link = document.getElementById('download-link');
+    if (data.zip_download_token) {
+      link.href = '/download/' + data.zip_download_token;
+      link.download = '';
+      link.style.display = 'block';
+    } else {
+      link.style.display = 'none';
+    }
+
+    if (data.state === 'error' && data.error) {
+      document.getElementById('result-file-list').innerHTML +=
+        `<div class="file-error" style="margin-top:0.5rem">${escapeHtml(data.error)}</div>`;
+    }
+
+    show('result-card');
+  }
+
   function resetForm() {
-    document.getElementById('pdf-input').value  = '';
-    document.getElementById('ctrl-input').value = '';
-    document.getElementById('pdf-name').textContent  = '';
-    document.getElementById('ctrl-name').textContent = '';
-    document.getElementById('ctrl-textarea').value = '';
+    stopPolling();
+    currentJobId = null;
+    selectedFiles = [];
+    renderFileList();
     hide('status-card');
     hide('result-card');
     hide('error-card');
     show('upload-card');
     show('control-card');
+    show('options-card');
+    show('submit-card');
   }
 </script>
 </body>

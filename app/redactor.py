@@ -156,7 +156,7 @@ def _redact_account_numbers(page: fitz.Page, plumber_page) -> int:
     return added
 
 
-def redact_pdf(input_path: str, control_path: str) -> str:
+def redact_pdf(input_path: str, control_path: str, build_tables: bool = True) -> str:
     """Redact *input_path* using PII terms from *control_path*.
 
     Alongside the existing term-based redaction, runs a pdfplumber-based
@@ -166,7 +166,8 @@ def redact_pdf(input_path: str, control_path: str) -> str:
     with correctly separated quantity/price/market-value columns despite
     the footnote-column bleed in the source layout. Unrecognized document
     types fall back to redaction-only -- no table extraction is attempted
-    and ``tables_path`` is None.
+    and ``tables_path`` is None. Passing ``build_tables=False`` skips table
+    extraction entirely regardless of document type.
 
     Returns ``(out_path, total_redactions, tables_path)``.
     Raises ValueError when the control file contains no usable terms.
@@ -181,8 +182,10 @@ def redact_pdf(input_path: str, control_path: str) -> str:
     if src.stem.endswith(".red"):
         out_path = src.with_name(src.stem + ".pdf").with_suffix(".red.pdf")
 
-    doc_type, holdings = extract(input_path)
-    tables_path = write_holdings_markdown(str(out_path), holdings) if doc_type != UNKNOWN else None
+    tables_path = None
+    if build_tables:
+        doc_type, holdings = extract(input_path)
+        tables_path = write_holdings_markdown(str(out_path), holdings) if doc_type != UNKNOWN else None
 
     doc: fitz.Document = fitz.open(input_path)
 

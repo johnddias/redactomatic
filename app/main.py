@@ -20,6 +20,7 @@ from flask import (
 )
 from werkzeug.utils import secure_filename
 
+import batch
 from redactor import redact_pdf
 
 # ---------------------------------------------------------------------------
@@ -45,6 +46,28 @@ def _session_dir() -> pathlib.Path:
     d = UPLOAD_FOLDER / uuid.uuid4().hex
     d.mkdir(parents=True, exist_ok=True)
     return d
+
+
+def _resolve_session_dir(job_id: str) -> pathlib.Path | None:
+    """Resolve *job_id* to an existing session directory under UPLOAD_FOLDER."""
+    safe = (UPLOAD_FOLDER / job_id).resolve()
+    if not str(safe).startswith(str(UPLOAD_FOLDER.resolve())):
+        return None
+    if not safe.is_dir():
+        return None
+    return safe
+
+
+def _unique_path(session_dir: pathlib.Path, filename: str) -> pathlib.Path:
+    """Return a save path in *session_dir* that doesn't collide with an existing file."""
+    candidate = session_dir / filename
+    if not candidate.exists():
+        return candidate
+    stem, suffix = candidate.stem, candidate.suffix
+    n = 2
+    while (session_dir / f"{stem}_{n}{suffix}").exists():
+        n += 1
+    return session_dir / f"{stem}_{n}{suffix}"
 
 
 # ---------------------------------------------------------------------------
@@ -105,6 +128,67 @@ def redact():
     return jsonify(response)
 
 
+@app.route("/batch", methods=["POST"])
+def create_batch():
+    """Accept multiple PDFs and a control file, and start a background batch job."""
+    files = request.files.getlist("files")
+    ctrl_file = request.files.get("control_file")
+
+    files = [f for f in files if f.filename]
+    if not files:
+        return jsonify({"error": "At least one PDF file is required."}), 400
+    if not ctrl_file or not ctrl_file.filename:
+        return jsonify({"error": "A control file is required."}), 400
+
+    bad = [f.filename for f in files if _ext(f.filename) != "pdf"]
+    if bad:
+        return jsonify({"error": f"Unsupported file type(s): {', '.join(bad)}. Only PDF is supported."}), 400
+
+    build_tables = request.form.get("build_tables", "true").lower() != "false"
+
+    session = _session_dir()
+
+    ctrl_name = secure_filename(ctrl_file.filename) or "control.txt"
+    ctrl_path = session / ctrl_name
+    ctrl_file.save(str(ctrl_path))
+
+    saved_files: list[tuple[str, str]] = []
+    for f in files:
+        save_path = _unique_path(session, secure_filename(f.filename) or "file.pdf")
+        f.save(str(save_path))
+        saved_files.append((str(save_path), f.filename))
+
+    batch.start_batch(session, saved_files, str(ctrl_path), build_tables)
+
+    return jsonify({"job_id": session.name, "total": len(saved_files)})
+
+
+@app.route("/batch/<job_id>/status")
+def batch_status(job_id: str):
+    session = _resolve_session_dir(job_id)
+    if session is None:
+        return jsonify({"error": "Unknown job."}), 404
+
+    status = batch.read_status(session)
+    if status is None:
+        return jsonify({"error": "Unknown job."}), 404
+
+    if status.get("state") == "complete" and status.get("zip_filename"):
+        status["zip_download_token"] = f"{job_id}/{status['zip_filename']}"
+
+    return jsonify(status)
+
+
+@app.route("/batch/<job_id>/cancel", methods=["POST"])
+def batch_cancel(job_id: str):
+    session = _resolve_session_dir(job_id)
+    if session is None:
+        return jsonify({"error": "Unknown job."}), 404
+
+    ok = batch.request_cancel(session)
+    return jsonify({"ok": ok})
+
+
 @app.route("/download/<path:token>")
 def download(token: str):
     """Stream the redacted PDF back to the browser."""
@@ -114,7 +198,13 @@ def download(token: str):
     if not safe.exists():
         return "Not found", 404
 
-    mimetype = "text/markdown" if safe.suffix == ".md" else "application/pdf"
+    if safe.suffix == ".md":
+        mimetype = "text/markdown"
+    elif safe.suffix == ".zip":
+        mimetype = "application/zip"
+    else:
+        mimetype = "application/pdf"
+
     return send_file(
         safe,
         as_attachment=True,
