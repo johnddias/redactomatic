@@ -1,0 +1,5 @@
+# Normalize all text files to LF in the repository and on checkout,
+# regardless of core.autocrlf on whichever OS's git client touches this
+# working tree (this repo is edited from both Windows and Linux against
+# the same physical files over a network share).
+* text=auto eol=lf
