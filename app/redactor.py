@@ -11,7 +11,7 @@ import re
 import fitz  # PyMuPDF
 import pdfplumber
 
-from document_extractors import UNKNOWN, extract, write_holdings_markdown
+from document_extractors import UNKNOWN, extract, write_tables_markdown
 
 # Matches standard SSN format: 123-45-6789
 _SSN_RE = re.compile(r"^(\d{3})-(\d{2})-(\d{4})$")
@@ -161,13 +161,15 @@ def redact_pdf(input_path: str, control_path: str, build_tables: bool = True) ->
 
     Alongside the existing term-based redaction, runs a pdfplumber-based
     pass that redacts account-number references at row/column scope, and,
-    for recognized statement vendors, extracts every holdings-table row
-    into a clean per-holding markdown sidecar file (``<name>.tables.md``)
-    with correctly separated quantity/price/market-value columns despite
-    the footnote-column bleed in the source layout. Unrecognized document
-    types fall back to redaction-only -- no table extraction is attempted
-    and ``tables_path`` is None. Passing ``build_tables=False`` skips table
-    extraction entirely regardless of document type.
+    for recognized statement vendors, extracts every holdings/transaction
+    row into a markdown sidecar file (``<name>.tables.md``) -- e.g.
+    correctly separated quantity/price/market-value columns despite the
+    footnote-column bleed in JPMS's source layout, or Post Date/Merchant/
+    Amount/Reference ID columns split out of a Chase statement's free-text
+    description. Unrecognized document types fall back to redaction-only
+    -- no table extraction is attempted and ``tables_path`` is None.
+    Passing ``build_tables=False`` skips table extraction entirely
+    regardless of document type.
 
     Returns ``(out_path, total_redactions, tables_path)``.
     Raises ValueError when the control file contains no usable terms.
@@ -184,8 +186,8 @@ def redact_pdf(input_path: str, control_path: str, build_tables: bool = True) ->
 
     tables_path = None
     if build_tables:
-        doc_type, holdings = extract(input_path)
-        tables_path = write_holdings_markdown(str(out_path), holdings) if doc_type != UNKNOWN else None
+        doc_type, rows = extract(input_path)
+        tables_path = write_tables_markdown(str(out_path), doc_type, rows) if doc_type != UNKNOWN else None
 
     doc: fitz.Document = fitz.open(input_path)
 

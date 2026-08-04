@@ -15,6 +15,7 @@ import pdfplumber
 # to support a new vendor.
 _MARKERS = {
     "jpmc": ("J.P. Morgan Securities", "JPMS LLC"),
+    "chase": ("JPMorgan Chase Bank",),
 }
 
 UNKNOWN = "unknown"
