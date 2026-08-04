@@ -22,6 +22,7 @@ from werkzeug.utils import secure_filename
 
 import batch
 from redactor import redact_pdf
+from version import VERSION
 
 # ---------------------------------------------------------------------------
 # App configuration
@@ -76,7 +77,7 @@ def _unique_path(session_dir: pathlib.Path, filename: str) -> pathlib.Path:
 
 @app.route("/")
 def index():
-    return render_template("index.html")
+    return render_template("index.html", version=VERSION)
 
 
 @app.route("/redact", methods=["POST"])
