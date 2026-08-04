@@ -35,3 +35,35 @@ def write_holdings_markdown(pdf_path: str, holdings: list[Holding]) -> str:
     out_path = pathlib.Path(pdf_path).with_suffix("").with_suffix(".tables.md")
     out_path.write_text(holdings_to_markdown(holdings), encoding="utf-8")
     return str(out_path)
+
+
+@dataclass
+class Transaction:
+    account: str
+    post_date: str
+    transaction_date: str
+    type: str
+    merchant: str
+    description: str
+    amount: str
+    category: str = ""
+    reference_id: str = ""
+
+
+def transactions_to_markdown(transactions: list[Transaction]) -> str:
+    lines = [
+        "| Account | Post Date | Transaction Date | Type | Merchant | Description | Amount | Category | Reference ID |",
+        "|---|---|---|---|---|---|---|---|---|",
+    ]
+    for t in transactions:
+        lines.append(
+            f"| {t.account} | {t.post_date} | {t.transaction_date} | {t.type} | {t.merchant} | "
+            f"{t.description} | {t.amount} | {t.category} | {t.reference_id} |"
+        )
+    return "\n".join(lines) + "\n"
+
+
+def write_transactions_markdown(pdf_path: str, transactions: list[Transaction]) -> str:
+    out_path = pathlib.Path(pdf_path).with_suffix("").with_suffix(".tables.md")
+    out_path.write_text(transactions_to_markdown(transactions), encoding="utf-8")
+    return str(out_path)

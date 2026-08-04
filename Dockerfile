@@ -1,3 +1,14 @@
+# Build stage: extract the git commit into a plain VERSION file so the
+# final image can show a build identifier without shipping .git or a git
+# binary (the version is a debugging aid for the UI footer, not runtime
+# logic -- falls back to "dev" if the commit can't be determined).
+FROM python:3.12-slim AS version
+RUN apt-get update && apt-get install -y --no-install-recommends git \
+    && rm -rf /var/lib/apt/lists/*
+WORKDIR /src
+COPY .git ./.git
+RUN git describe --always --dirty > /VERSION 2>/dev/null || echo "dev" > /VERSION
+
 FROM python:3.12-slim
 
 # System deps (PyMuPDF ships bundled binaries; no extra libs needed on slim)
@@ -10,6 +21,7 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 COPY app/ .
+COPY --from=version /VERSION ./VERSION
 
 # Data directory for uploads and outputs
 RUN mkdir -p /data

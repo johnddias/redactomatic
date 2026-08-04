@@ -17,6 +17,7 @@ wrapped description while dropping footnote-only continuation lines.
 """
 
 import re
+import warnings
 
 import pdfplumber
 
@@ -250,10 +251,17 @@ def extract_holdings(pdf_path: str) -> list[Holding]:
     Value all present) versus which rows are continuations that only
     extend the description or contribute lot-level detail already
     summarized on the holding's primary row.
+
+    A page that fails to parse (unexpected layout, malformed content
+    stream, ...) is skipped rather than aborting the whole statement --
+    one bad page shouldn't zero out every other page's holdings.
     """
     holdings = []
     with pdfplumber.open(pdf_path) as pdf:
         for page_no, page in enumerate(pdf.pages, start=1):
-            account = _detect_account(page)
-            holdings.extend(_extract_page_holdings(page, page_no, account))
+            try:
+                account = _detect_account(page)
+                holdings.extend(_extract_page_holdings(page, page_no, account))
+            except Exception as exc:
+                warnings.warn(f"{pdf_path}: skipping page {page_no}, holdings extraction failed: {exc}")
     return holdings
