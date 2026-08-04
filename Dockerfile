@@ -6,7 +6,10 @@ FROM python:3.12-slim AS version
 RUN apt-get update && apt-get install -y --no-install-recommends git \
     && rm -rf /var/lib/apt/lists/*
 WORKDIR /src
-COPY .git ./.git
+# `--dirty` needs the actual tracked files present to diff against the
+# index -- copying just .git leaves every tracked file looking "deleted",
+# so it always reports dirty regardless of the real commit state.
+COPY . .
 RUN git describe --always --dirty > /VERSION 2>/dev/null || echo "dev" > /VERSION
 
 FROM python:3.12-slim
