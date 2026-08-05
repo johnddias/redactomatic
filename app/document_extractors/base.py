@@ -25,7 +25,7 @@ def holdings_to_markdown(holdings: list[Holding]) -> str:
     ]
     for h in holdings:
         lines.append(
-            f"| {h.account} | {h.page} | {h.description} | {h.quantity} | {h.price} | "
+            f"| {h.account} | p.{h.page} | {h.description} | {h.quantity} | {h.price} | "
             f"{h.market_value} | {h.unit_cost} | {h.cost_basis} | {h.gain_loss} |"
         )
     return "\n".join(lines) + "\n"
