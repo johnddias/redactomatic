@@ -116,9 +116,21 @@ def _build_columns(header_row):
 
 
 def _bucket(word, cols):
-    x0 = word["x0"]
-    for c in cols:
-        if c["left"] <= x0 < c["right"]:
+    # Description is left-aligned and deliberately given a lenient right
+    # edge (see _COLUMN_MARGIN) so wrapped names aren't clipped -- x0
+    # alone is the right test there. Every other column is a right-
+    # aligned number/date, printed flush to its column's right edge; a
+    # wide value (e.g. "1,154.29") can start far enough left that its x0
+    # lands a fraction of a pixel inside the *previous* numeric column's
+    # margin-widened zone, corrupting that column and silently blanking
+    # its own. Bucketing those columns by center avoids that collision
+    # without touching Description's overflow tolerance.
+    desc = cols[0]
+    if word["x0"] < desc["right"]:
+        return desc["name"]
+    xc = (word["x0"] + word["x1"]) / 2
+    for c in cols[1:]:
+        if c["left"] <= xc < c["right"]:
             return c["name"]
     return cols[-1]["name"]
 
