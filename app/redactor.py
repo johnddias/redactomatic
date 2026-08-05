@@ -11,7 +11,7 @@ import re
 import fitz  # PyMuPDF
 import pdfplumber
 
-from document_extractors import UNKNOWN, extract, write_tables_markdown
+from document_extractors import UNKNOWN, extract, write_tables_markdown, write_tables_json
 
 # Matches standard SSN format: 123-45-6789
 _SSN_RE = re.compile(r"^(\d{3})-(\d{2})-(\d{4})$")
@@ -166,12 +166,15 @@ def redact_pdf(input_path: str, control_path: str, build_tables: bool = True) ->
     correctly separated quantity/price/market-value columns despite the
     footnote-column bleed in JPMS's source layout, or Post Date/Merchant/
     Amount/Reference ID columns split out of a Chase statement's free-text
-    description. Unrecognized document types fall back to redaction-only
-    -- no table extraction is attempted and ``tables_path`` is None.
+    description. For doc types whose row type carries a field the markdown
+    table doesn't (currently just Holding.symbol), also writes a
+    ``<name>.holdings.json`` sidecar with the full row data. Unrecognized
+    document types fall back to redaction-only -- no table extraction is
+    attempted and ``tables_path``/``holdings_json_path`` are both None.
     Passing ``build_tables=False`` skips table extraction entirely
     regardless of document type.
 
-    Returns ``(out_path, total_redactions, tables_path)``.
+    Returns ``(out_path, total_redactions, tables_path, holdings_json_path)``.
     Raises ValueError when the control file contains no usable terms.
     """
     terms = load_pii_terms(control_path)
@@ -185,9 +188,12 @@ def redact_pdf(input_path: str, control_path: str, build_tables: bool = True) ->
         out_path = src.with_name(src.stem + ".pdf").with_suffix(".red.pdf")
 
     tables_path = None
+    holdings_json_path = None
     if build_tables:
         doc_type, rows = extract(input_path)
-        tables_path = write_tables_markdown(str(out_path), doc_type, rows) if doc_type != UNKNOWN else None
+        if doc_type != UNKNOWN:
+            tables_path = write_tables_markdown(str(out_path), doc_type, rows)
+            holdings_json_path = write_tables_json(str(out_path), doc_type, rows)
 
     doc: fitz.Document = fitz.open(input_path)
 
@@ -209,4 +215,4 @@ def redact_pdf(input_path: str, control_path: str, build_tables: bool = True) ->
     doc.save(str(out_path), garbage=4, deflate=True, clean=True)
     doc.close()
 
-    return str(out_path), total_redactions, tables_path
+    return str(out_path), total_redactions, tables_path, holdings_json_path

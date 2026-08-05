@@ -20,6 +20,7 @@ from .base import (
     Transaction,
     holdings_to_markdown,
     write_holdings_markdown,
+    write_holdings_json,
     write_transactions_markdown,
 )
 from .classifier import UNKNOWN, classify
@@ -37,6 +38,14 @@ _EXTRACTORS = {
 _WRITERS = {
     "jpmc": write_holdings_markdown,
     "chase": write_transactions_markdown,
+}
+
+# JSON sidecar writers, for doc types whose row type carries a field the
+# markdown table doesn't (currently just Holding.symbol). Deliberately not
+# registered for "chase": Transaction has no such gap, so there's nothing
+# a JSON sidecar would add over the markdown table.
+_JSON_WRITERS = {
+    "jpmc": write_holdings_json,
 }
 
 
@@ -63,6 +72,17 @@ def write_tables_markdown(pdf_path: str, doc_type: str, rows: list) -> str | Non
     return writer(pdf_path, rows) if writer else None
 
 
+def write_tables_json(pdf_path: str, doc_type: str, rows: list) -> str | None:
+    """Write *rows* to a JSON sidecar using the writer for *doc_type*.
+
+    Returns None (and writes nothing) for a doc_type with no JSON writer
+    registered -- either unrecognized, or one whose row type has nothing
+    the markdown table doesn't already carry.
+    """
+    writer = _JSON_WRITERS.get(doc_type)
+    return writer(pdf_path, rows) if writer else None
+
+
 def extract_holdings(pdf_path: str) -> list[Holding]:
     """Convenience wrapper around `extract` for callers that only need holdings."""
     _, holdings = extract(pdf_path)
@@ -73,11 +93,13 @@ __all__ = [
     "extract",
     "extract_holdings",
     "write_tables_markdown",
+    "write_tables_json",
     "classify",
     "UNKNOWN",
     "Holding",
     "Transaction",
     "holdings_to_markdown",
     "write_holdings_markdown",
+    "write_holdings_json",
     "write_transactions_markdown",
 ]

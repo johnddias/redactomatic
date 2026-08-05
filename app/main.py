@@ -107,7 +107,7 @@ def redact():
     ctrl_file.save(str(ctrl_path))
 
     try:
-        out_path, count, tables_path = redact_pdf(str(pdf_path), str(ctrl_path))
+        out_path, count, tables_path, holdings_json_path = redact_pdf(str(pdf_path), str(ctrl_path))
     except ValueError as exc:
         return jsonify({"error": str(exc)}), 422
     except Exception as exc:  # noqa: BLE001
@@ -125,6 +125,9 @@ def redact():
     if tables_path is not None:
         response["tables_file"] = pathlib.Path(tables_path).name
         response["tables_download_token"] = str(pathlib.Path(tables_path).relative_to(UPLOAD_FOLDER))
+    if holdings_json_path is not None:
+        response["holdings_json_file"] = pathlib.Path(holdings_json_path).name
+        response["holdings_json_download_token"] = str(pathlib.Path(holdings_json_path).relative_to(UPLOAD_FOLDER))
 
     return jsonify(response)
 

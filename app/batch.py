@@ -129,14 +129,16 @@ def _run_batch(
                 "original_filename": original_filename,
                 "redacted_filename": None,
                 "tables_filename": None,
+                "holdings_json_filename": None,
                 "redactions": 0,
                 "status": "error",
                 "error": None,
             }
             try:
-                out_path, count, tables_path = redact_pdf(saved_path, control_path, build_tables)
+                out_path, count, tables_path, holdings_json_path = redact_pdf(saved_path, control_path, build_tables)
                 entry["redacted_filename"] = pathlib.Path(out_path).name
                 entry["tables_filename"] = pathlib.Path(tables_path).name if tables_path else None
+                entry["holdings_json_filename"] = pathlib.Path(holdings_json_path).name if holdings_json_path else None
                 entry["redactions"] = count
                 entry["status"] = "success"
             except Exception as exc:  # noqa: BLE001 - one bad file must not abort the batch
@@ -187,6 +189,7 @@ def _build_zip(
                 "original_filename": r["original_filename"],
                 "redacted_filename": r["redacted_filename"],
                 "tables_filename": r["tables_filename"],
+                "holdings_json_filename": r["holdings_json_filename"],
                 "redactions": r["redactions"],
                 "status": r["status"],
                 "error": r["error"],
@@ -208,6 +211,10 @@ def _build_zip(
                 tables_path = session_dir / r["tables_filename"]
                 if tables_path.exists():
                     zf.write(tables_path, arcname=r["tables_filename"])
+            if r["holdings_json_filename"]:
+                holdings_json_path = session_dir / r["holdings_json_filename"]
+                if holdings_json_path.exists():
+                    zf.write(holdings_json_path, arcname=r["holdings_json_filename"])
 
     return zip_path
 
