@@ -81,8 +81,10 @@ Jane Doe
   with the redaction count and download tokens for the redacted PDF and (if
   produced) the tables markdown file.
 - `POST /batch` — form fields `files` (multiple), `control_file`, and
-  optional `build_tables` (`"false"` to skip table extraction). Returns a
-  `job_id` for polling.
+  optional `redact_pii`, `build_tables`, `build_holdings` (each `"false"` to
+  skip that output; all default to `"true"`). At least one of the three must
+  stay enabled, or the request is rejected with a 400. Returns a `job_id` for
+  polling.
 - `GET /batch/<job_id>/status` — poll job progress; includes a
   `zip_download_token` once complete.
 - `POST /batch/<job_id>/cancel` — cancel a running batch job.

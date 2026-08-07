@@ -7,6 +7,7 @@ Environment variables (all optional):
     SECRET_KEY      – Flask secret key for flash messages
 """
 
+import logging
 import os
 import pathlib
 import uuid
@@ -27,6 +28,8 @@ from version import VERSION
 # ---------------------------------------------------------------------------
 # App configuration
 # ---------------------------------------------------------------------------
+
+logging.basicConfig(level=logging.INFO, format="%(asctime)s %(name)s %(levelname)s: %(message)s")
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY", os.urandom(24))
@@ -148,7 +151,12 @@ def create_batch():
     if bad:
         return jsonify({"error": f"Unsupported file type(s): {', '.join(bad)}. Only PDF is supported."}), 400
 
+    redact_pii = request.form.get("redact_pii", "true").lower() != "false"
     build_tables = request.form.get("build_tables", "true").lower() != "false"
+    build_holdings = request.form.get("build_holdings", "true").lower() != "false"
+
+    if not (redact_pii or build_tables or build_holdings):
+        return jsonify({"error": "Select at least one output to run."}), 400
 
     session = _session_dir()
 
@@ -162,7 +170,7 @@ def create_batch():
         f.save(str(save_path))
         saved_files.append((str(save_path), f.filename))
 
-    batch.start_batch(session, saved_files, str(ctrl_path), build_tables)
+    batch.start_batch(session, saved_files, str(ctrl_path), build_tables, build_holdings, redact_pii)
 
     return jsonify({"job_id": session.name, "total": len(saved_files)})
 
