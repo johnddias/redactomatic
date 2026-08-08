@@ -10,6 +10,7 @@ both can see.
 """
 
 import json
+import logging
 import pathlib
 import threading
 import time
@@ -18,6 +19,8 @@ import zipfile
 from datetime import datetime, timezone
 
 from redactor import redact_pdf
+
+logger = logging.getLogger(__name__)
 
 STATUS_FILENAME = "status.json"
 CANCEL_FLAG_FILENAME = "cancel.flag"
@@ -68,6 +71,8 @@ def start_batch(
     saved_files: list[tuple[str, str]],
     control_path: str,
     build_tables: bool,
+    build_holdings: bool,
+    redact_pii: bool,
 ) -> None:
     """Kick off a batch job in a background thread.
 
@@ -91,7 +96,7 @@ def start_batch(
 
     thread = threading.Thread(
         target=_run_batch,
-        args=(session_dir, saved_files, control_path, build_tables),
+        args=(session_dir, saved_files, control_path, build_tables, build_holdings, redact_pii),
         daemon=True,
     )
     thread.start()
@@ -102,6 +107,8 @@ def _run_batch(
     saved_files: list[tuple[str, str]],
     control_path: str,
     build_tables: bool,
+    build_holdings: bool,
+    redact_pii: bool,
 ) -> None:
     total = len(saved_files)
     results: list[dict] = []
@@ -135,14 +142,29 @@ def _run_batch(
                 "error": None,
             }
             try:
-                out_path, count, tables_path, holdings_json_path = redact_pdf(saved_path, control_path, build_tables)
-                entry["redacted_filename"] = pathlib.Path(out_path).name
+                out_path, count, tables_path, holdings_json_path = redact_pdf(
+                    saved_path,
+                    control_path,
+                    build_tables=build_tables,
+                    build_holdings=build_holdings,
+                    redact_pii=redact_pii,
+                )
+                entry["redacted_filename"] = pathlib.Path(out_path).name if out_path else None
                 entry["tables_filename"] = pathlib.Path(tables_path).name if tables_path else None
                 entry["holdings_json_filename"] = pathlib.Path(holdings_json_path).name if holdings_json_path else None
                 entry["redactions"] = count
                 entry["status"] = "success"
+
+                logger.info(
+                    "%s: redaction=%s tables=%s holdings=%s",
+                    original_filename,
+                    "produced" if entry["redacted_filename"] else "skipped",
+                    "produced" if entry["tables_filename"] else ("skipped" if not build_tables else "unsupported doc type"),
+                    "produced" if entry["holdings_json_filename"] else ("skipped" if not build_holdings else "unsupported doc type"),
+                )
             except Exception as exc:  # noqa: BLE001 - one bad file must not abort the batch
                 entry["error"] = str(exc)
+                logger.warning("%s: failed - %s", original_filename, exc)
 
             results.append(entry)
 
@@ -157,7 +179,7 @@ def _run_batch(
             status["eta_seconds"] = eta_seconds
             _write_status(session_dir, status)
 
-        zip_path = _build_zip(session_dir, session_dir.name, results, build_tables)
+        zip_path = _build_zip(session_dir, session_dir.name, results, build_tables, build_holdings, redact_pii)
         _cleanup_session_dir(session_dir, keep={STATUS_FILENAME, zip_path.name})
 
         status = read_status(session_dir) or {}
@@ -179,11 +201,15 @@ def _build_zip(
     job_id: str,
     results: list[dict],
     build_tables: bool,
+    build_holdings: bool,
+    redact_pii: bool,
 ) -> pathlib.Path:
     manifest = {
         "job_id": job_id,
         "processed_at": datetime.now(timezone.utc).isoformat(),
+        "redact_pii": redact_pii,
         "build_tables": build_tables,
+        "build_holdings": build_holdings,
         "files": [
             {
                 "original_filename": r["original_filename"],
@@ -204,9 +230,10 @@ def _build_zip(
         for r in results:
             if r["status"] != "success":
                 continue
-            redacted_path = session_dir / r["redacted_filename"]
-            if redacted_path.exists():
-                zf.write(redacted_path, arcname=r["redacted_filename"])
+            if r["redacted_filename"]:
+                redacted_path = session_dir / r["redacted_filename"]
+                if redacted_path.exists():
+                    zf.write(redacted_path, arcname=r["redacted_filename"])
             if r["tables_filename"]:
                 tables_path = session_dir / r["tables_filename"]
                 if tables_path.exists():

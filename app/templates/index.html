@@ -534,12 +534,27 @@
 <div class="card" id="options-card">
   <h2>3 &mdash; Options</h2>
   <div class="option-row">
-    <input type="checkbox" id="build-tables" checked onchange="persistSettings()" />
+    <input type="checkbox" id="redact-pii" checked onchange="onOutputToggleChange()" />
     <div>
-      <label for="build-tables">Build tables for redacted output</label>
-      <p class="hint">Applies to the whole batch. When enabled, recognized statement types get a companion holdings-table file alongside the redacted PDF.</p>
+      <label for="redact-pii">Redact PII</label>
+      <p class="hint">Applies to the whole batch. Produces a redacted PDF for each file.</p>
     </div>
   </div>
+  <div class="option-row" style="margin-top:0.85rem">
+    <input type="checkbox" id="build-tables" checked onchange="onOutputToggleChange()" />
+    <div>
+      <label for="build-tables">Extract Tables</label>
+      <p class="hint">Applies to the whole batch. Recognized statement types get a companion <code>.tables.md</code> file.</p>
+    </div>
+  </div>
+  <div class="option-row" style="margin-top:0.85rem">
+    <input type="checkbox" id="build-holdings" checked onchange="onOutputToggleChange()" />
+    <div>
+      <label for="build-holdings">Extract Holdings</label>
+      <p class="hint">Applies to the whole batch. Recognized statement types get a companion <code>.holdings.json</code> file.</p>
+    </div>
+  </div>
+  <p class="hint" id="options-error" style="display:none;color:var(--accent);margin-top:0.85rem">Select at least one output to run.</p>
 </div>
 
 <div class="card" id="submit-card">
@@ -597,8 +612,10 @@
   let currentJobId = null;
   let cancelRequested = false;
 
-  const SESSION_KEY_CONTROL = 'redactomatic_control_text';
-  const SESSION_KEY_TABLES  = 'redactomatic_build_tables';
+  const SESSION_KEY_CONTROL  = 'redactomatic_control_text';
+  const SESSION_KEY_REDACT   = 'redactomatic_redact_pii';
+  const SESSION_KEY_TABLES   = 'redactomatic_build_tables';
+  const SESSION_KEY_HOLDINGS = 'redactomatic_build_holdings';
 
   // ---------------------------------------------------------------------
   // Utilities
@@ -848,26 +865,61 @@
   function persistSettings() {
     try {
       sessionStorage.setItem(SESSION_KEY_CONTROL, currentControlText);
+      sessionStorage.setItem(SESSION_KEY_REDACT, document.getElementById('redact-pii').checked ? '1' : '0');
       sessionStorage.setItem(SESSION_KEY_TABLES, document.getElementById('build-tables').checked ? '1' : '0');
+      sessionStorage.setItem(SESSION_KEY_HOLDINGS, document.getElementById('build-holdings').checked ? '1' : '0');
     } catch (e) { /* sessionStorage unavailable - ignore */ }
   }
 
   function restoreSettings() {
     try {
       const text = sessionStorage.getItem(SESSION_KEY_CONTROL);
+      const redact = sessionStorage.getItem(SESSION_KEY_REDACT);
       const tables = sessionStorage.getItem(SESSION_KEY_TABLES);
+      const holdings = sessionStorage.getItem(SESSION_KEY_HOLDINGS);
       if (text) {
         currentControlText = text;
         document.getElementById('ctrl-textarea').value = text;
         switchCtrl('text');
       }
+      if (redact !== null) {
+        document.getElementById('redact-pii').checked = redact === '1';
+      }
       if (tables !== null) {
         document.getElementById('build-tables').checked = tables === '1';
+      }
+      if (holdings !== null) {
+        document.getElementById('build-holdings').checked = holdings === '1';
       }
     } catch (e) { /* sessionStorage unavailable - ignore */ }
   }
 
+  // ---------------------------------------------------------------------
+  // Output toggles: at least one of redact/tables/holdings must be on
+  // ---------------------------------------------------------------------
+  function selectedOutputs() {
+    return {
+      redact_pii: document.getElementById('redact-pii').checked,
+      build_tables: document.getElementById('build-tables').checked,
+      build_holdings: document.getElementById('build-holdings').checked,
+    };
+  }
+
+  function updateSubmitAvailability() {
+    const outputs = selectedOutputs();
+    const anySelected = outputs.redact_pii || outputs.build_tables || outputs.build_holdings;
+    document.getElementById('redact-btn').disabled = !anySelected;
+    document.getElementById('options-error').style.display = anySelected ? 'none' : 'block';
+    return anySelected;
+  }
+
+  function onOutputToggleChange() {
+    persistSettings();
+    updateSubmitAvailability();
+  }
+
   restoreSettings();
+  updateSubmitAvailability();
 
   // ---------------------------------------------------------------------
   // Batch submission
@@ -886,11 +938,18 @@
       return;
     }
 
+    if (!updateSubmitAvailability()) {
+      return;
+    }
+
     const fd = new FormData();
     validFiles.forEach(entry => fd.append('files', entry.file));
     const blob = new Blob([currentControlText], { type: 'text/plain' });
     fd.append('control_file', blob, 'control.txt');
-    fd.append('build_tables', document.getElementById('build-tables').checked ? 'true' : 'false');
+    const outputs = selectedOutputs();
+    fd.append('redact_pii', outputs.redact_pii ? 'true' : 'false');
+    fd.append('build_tables', outputs.build_tables ? 'true' : 'false');
+    fd.append('build_holdings', outputs.build_holdings ? 'true' : 'false');
 
     validFiles.forEach(entry => entry.status = 'queued');
     renderFileList();

@@ -156,31 +156,40 @@ def _redact_account_numbers(page: fitz.Page, plumber_page) -> int:
     return added
 
 
-def redact_pdf(input_path: str, control_path: str, build_tables: bool = True) -> str:
-    """Redact *input_path* using PII terms from *control_path*.
+def redact_pdf(
+    input_path: str,
+    control_path: str,
+    build_tables: bool = True,
+    build_holdings: bool = True,
+    redact_pii: bool = True,
+) -> str:
+    """Process *input_path* according to the ``build_tables``/``build_holdings``/
+    ``redact_pii`` toggles, using PII terms from *control_path* when redaction
+    is enabled.
 
-    Alongside the existing term-based redaction, runs a pdfplumber-based
-    pass that redacts account-number references at row/column scope, and,
-    for recognized statement vendors, extracts every holdings/transaction
-    row into a markdown sidecar file (``<name>.tables.md``) -- e.g.
-    correctly separated quantity/price/market-value columns despite the
-    footnote-column bleed in JPMS's source layout, or Post Date/Merchant/
-    Amount/Reference ID columns split out of a Chase statement's free-text
-    description. For doc types whose row type carries a field the markdown
-    table doesn't (currently just Holding.symbol), also writes a
-    ``<name>.holdings.json`` sidecar with the full row data. Unrecognized
-    document types fall back to redaction-only -- no table extraction is
-    attempted and ``tables_path``/``holdings_json_path`` are both None.
-    Passing ``build_tables=False`` skips table extraction entirely
-    regardless of document type.
+    Table and holdings extraction share a single underlying pass:
+    ``document_extractors.extract`` classifies the document and parses its
+    rows once, and is only invoked at all when ``build_tables`` or
+    ``build_holdings`` is enabled -- it never runs twice for one file.
+    ``build_tables`` then controls whether the ``<name>.tables.md`` markdown
+    sidecar gets written from those rows, and ``build_holdings`` controls the
+    ``<name>.holdings.json`` sidecar (for doc types whose row type carries a
+    field the markdown table doesn't -- currently just Holding.symbol)
+    independently. Unrecognized document types fall back to no extraction --
+    ``tables_path``/``holdings_json_path`` are both None regardless of the
+    toggles.
+
+    Extraction always reads *input_path* (the original PDF), never the
+    redacted output, so it runs the same way whether or not ``redact_pii``
+    is enabled. When ``redact_pii`` is False, the term-based/account-number
+    redaction pass and the ``.red.pdf`` save are skipped entirely and
+    ``out_path`` is None -- sidecar filenames still use the ``.red.pdf``
+    naming stem for consistency, even though that file isn't written.
 
     Returns ``(out_path, total_redactions, tables_path, holdings_json_path)``.
-    Raises ValueError when the control file contains no usable terms.
+    Raises ValueError when ``redact_pii`` is True and the control file
+    contains no usable terms.
     """
-    terms = load_pii_terms(control_path)
-    if not terms:
-        raise ValueError("Control file contains no redaction terms.")
-
     src = pathlib.Path(input_path)
     out_path = src.with_suffix("").with_suffix(".red.pdf")
     # Handle files that already end with .red to avoid .red.red.pdf
@@ -189,30 +198,39 @@ def redact_pdf(input_path: str, control_path: str, build_tables: bool = True) ->
 
     tables_path = None
     holdings_json_path = None
-    if build_tables:
+    if build_tables or build_holdings:
         doc_type, rows = extract(input_path)
         if doc_type != UNKNOWN:
-            tables_path = write_tables_markdown(str(out_path), doc_type, rows)
-            holdings_json_path = write_tables_json(str(out_path), doc_type, rows)
-
-    doc: fitz.Document = fitz.open(input_path)
+            if build_tables:
+                tables_path = write_tables_markdown(str(out_path), doc_type, rows)
+            if build_holdings:
+                holdings_json_path = write_tables_json(str(out_path), doc_type, rows)
 
     total_redactions = 0
-    with pdfplumber.open(input_path) as plumber_doc:
-        for page, plumber_page in zip(doc, plumber_doc.pages):
-            n = _redact_page(page, terms)
-            n += _redact_account_numbers(page, plumber_page)
-            if n:
-                page.apply_redactions(images=fitz.PDF_REDACT_IMAGE_PIXELS)
-            total_redactions += n
+    redacted_out_path = None
+    if redact_pii:
+        terms = load_pii_terms(control_path)
+        if not terms:
+            raise ValueError("Control file contains no redaction terms.")
 
-    # Strip all metadata
-    doc.set_metadata({})
+        doc: fitz.Document = fitz.open(input_path)
 
-    # Remove any XMP metadata stream
-    doc.del_xml_metadata()
+        with pdfplumber.open(input_path) as plumber_doc:
+            for page, plumber_page in zip(doc, plumber_doc.pages):
+                n = _redact_page(page, terms)
+                n += _redact_account_numbers(page, plumber_page)
+                if n:
+                    page.apply_redactions(images=fitz.PDF_REDACT_IMAGE_PIXELS)
+                total_redactions += n
 
-    doc.save(str(out_path), garbage=4, deflate=True, clean=True)
-    doc.close()
+        # Strip all metadata
+        doc.set_metadata({})
 
-    return str(out_path), total_redactions, tables_path, holdings_json_path
+        # Remove any XMP metadata stream
+        doc.del_xml_metadata()
+
+        doc.save(str(out_path), garbage=4, deflate=True, clean=True)
+        doc.close()
+        redacted_out_path = str(out_path)
+
+    return redacted_out_path, total_redactions, tables_path, holdings_json_path
